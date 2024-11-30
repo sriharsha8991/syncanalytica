@@ -156,13 +156,22 @@ def display_analysis_results(results):
         st.dataframe(result)
 
 # Generate Report
+# Generate Report
 def generate_report():
     st.markdown("<div class='custom-header'><h1>Generate HTML Report</h1></div>", unsafe_allow_html=True)
     if 'analysis_results' in st.session_state and st.button('Save Report to HTML'):
-        save_html_report(st.session_state['analysis_results'])
+        # Save the report as HTML and return the content as a string
+        html_content = save_html_report(st.session_state['analysis_results'])
         st.success("Report saved to 'report.html'")
-        st.write("The report has been saved locally as `report.html`.")
-
+        
+        # Provide a download button for the HTML report
+        st.download_button(
+            label="Download Report",
+            data=html_content,
+            file_name="report.html",
+            mime="text/html"
+        )
+        
     api_key = "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"  # Replace with your actual API key
     client = initialize_groq_client(api_key)
 
@@ -180,12 +189,21 @@ def generate_report():
     except Exception as e:
         st.error(f"An error occurred while generating the report: {e}")
 
+
+# Save HTML Report
 # Save HTML Report
 def save_html_report(analysis_results):
-    with open('report.html', 'w') as f:
-        for title, data in analysis_results.items():
-            f.write(f"<h1>{title}</h1>\n")
-            f.write(pd.DataFrame(data).to_html() + "\n")
+    html_content = ""
+    for title, data in analysis_results.items():
+        html_content += f"<h1>{title}</h1>\n"
+        html_content += pd.DataFrame(data).to_html() + "\n"
+    
+    # Save the content to a file
+    with open('report.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    return html_content
+
 
 if __name__ == "__main__":
     main()
