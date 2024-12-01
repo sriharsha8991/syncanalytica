@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt 
+import plotly.express as px
+import seaborn as sns
 from groq_chat import *
 
 # Apply custom styles for a professional and aesthetic layout
@@ -123,9 +126,17 @@ def data_analysis_desk():
             else:
                 st.write("### Data Preview")
                 st.dataframe(df.head())
+
+                # Display slicers for filtering
+                display_slicers(df)
+
+                # Perform analysis
                 analysis_results = perform_full_analysis(df)
                 st.session_state['analysis_results'] = analysis_results
                 display_analysis_results(analysis_results)
+
+                # Display visualizations
+                display_visualizations(df)
         except Exception as e:
             st.error(f"Error reading file: {e}")
 
@@ -150,12 +161,59 @@ def perform_full_analysis(df):
         return {}
 
 # Display analysis results
+def display_slicers(df):
+    # Categorical slicers
+    categorical_cols = df.select_dtypes(include=['object', 'category']).columns
+    if len(categorical_cols) > 0:
+        selected_column = st.selectbox("Select categorical column for filtering", categorical_cols)
+        unique_values = df[selected_column].unique()
+        selected_values = st.multiselect(f"Select values from {selected_column}", unique_values, default=unique_values)
+        if selected_values:
+            df = df[df[selected_column].isin(selected_values)]
+    
+    # Numeric slicers
+    numeric_cols = df.select_dtypes(include=['number']).columns
+    if len(numeric_cols) > 0:
+        selected_column = st.selectbox("Select numeric column for range filter", numeric_cols)
+        min_val = df[selected_column].min()
+        max_val = df[selected_column].max()
+        range_values = st.slider(f"Select range for {selected_column}", min_value=int(min_val), max_value=int(max_val), value=(int(min_val), int(max_val)))
+        df = df[(df[selected_column] >= range_values[0]) & (df[selected_column] <= range_values[1])]
+    
+    st.write(f"### Filtered Data Preview (showing first 10 rows)")
+    st.dataframe(df.head())
+    return df
+
+# Display visualizations
+def display_visualizations(df):
+    # Plotting a distribution of numeric data
+    numeric_df = df.select_dtypes(include=['number'])
+    if not numeric_df.empty:
+        st.subheader("Distribution of Numeric Data")
+        fig = plt.figure(figsize=(10, 6))
+        numeric_df.hist(bins=15, edgecolor='black', figsize=(10, 6))
+        st.pyplot(fig)
+
+    # Plot correlation heatmap using Seaborn
+    if not numeric_df.empty:
+        st.subheader("Correlation Heatmap")
+        corr = numeric_df.corr()
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
+        st.pyplot(fig)
+
+    # Plot interactive scatter plot using Plotly
+    if len(numeric_df.columns) >= 2:
+        st.subheader("Interactive Scatter Plot")
+        fig = px.scatter(df, x=numeric_df.columns[0], y=numeric_df.columns[1], title="Scatter Plot")
+        st.plotly_chart(fig)
+
 def display_analysis_results(results):
     for analysis_type, result in results.items():
         st.subheader(analysis_type)
         st.dataframe(result)
 
-# Generate Report
+
 # Generate Report
 def generate_report():
     st.markdown("<div class='custom-header'><h1>Generate HTML Report</h1></div>", unsafe_allow_html=True)
